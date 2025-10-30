@@ -15,17 +15,17 @@ std::string get_thread_id()
 
 int main(void)
 {
-    TinyThreadPool::init();
+    TinyThreadPool::Initialize();
 
     std::cout << "Initializing ..." << std::endl;
 
-    for (int i = 0; i < 8; ++i)
-        for (int j = 0; j < 16; ++j)
-			TinyThreadPool::exec([i, j]() 
+    for (int i = 0; i < 64; ++i)
+        for (int j = 0; j < 64; ++j)
+			TinyThreadPool::Execute([i, j]() 
 			{
 				printf("Batch ID: %d, Task ID: %d, With Worker ID: %s\n", i, j, get_thread_id().c_str());
 			});
 
-    TinyThreadPool::wait();
+    TinyThreadPool::Shutdown();
     return 0;
 }

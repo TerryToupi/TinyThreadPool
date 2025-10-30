@@ -14,19 +14,26 @@ namespace TinyThreadPool
 	public:
 		inline bool push_back(const Job& item)
 		{
-			std::scoped_lock lock(m_lock);
+			std::scoped_lock locker(m_lock);
 			m_queue.push_back(item);
 			return true;
 		}
 
 		inline bool pop_front(Job& item)
 		{
-			std::scoped_lock lock(m_lock);
+			std::scoped_lock locker(m_lock);
 			if (m_queue.empty())
 				return false;
 
 			item = std::move(m_queue.front());
 			m_queue.pop_front();
+			return true;
+		}
+
+		inline bool clear()
+		{
+			std::scoped_lock locker(m_lock);
+			m_queue.clear();
 			return true;
 		}
 
@@ -38,27 +45,34 @@ namespace TinyThreadPool
 
 
 	// Thread pool state
-	uint32_t				p_num_threads = 0;
-	uint64_t				p_current_label = 0;
-	std::atomic<uint64_t>	p_finish_label;
-	JobQueue				p_job_pool;
-	std::condition_variable	p_wake_condition;
-	std::mutex				p_wake_mutex;
+	std::atomic<bool>		 p_alive;
+	std::vector<std::thread> p_threads;
+	uint32_t				 p_num_threads = 0;
+	std::atomic<uint64_t>	 p_current_label;
+	std::atomic<uint64_t>	 p_finish_label;
+	JobQueue				 p_job_pool;
+	std::condition_variable	 p_wake_condition;
+	std::mutex				 p_wake_mutex;
 
 
 
-	void init()
+	void Initialize()
 	{
 		p_finish_label.store(0);
+		p_current_label.store(0);
 
 		auto cores = std::thread::hardware_concurrency();
 		cores = std::max(1u, cores);
 
+		p_threads.reserve(cores);
+
+		p_alive.store(true);
 		for (uint32_t thread_id = 0; thread_id < cores; ++thread_id)
 		{
-			std::thread worker([] {
+			p_threads.emplace_back([=] 
+			{
 				Job job;
-				while (true)
+				while (p_alive.load())
 				{
 					if (p_job_pool.pop_front(job))
 					{
@@ -71,10 +85,28 @@ namespace TinyThreadPool
 						p_wake_condition.wait(lock);
 					}
 				}
-				});
-
-			worker.detach();
+			});
 		}
+	}
+
+	void Shutdown()
+	{
+		Wait();
+
+		p_alive.store(false);
+		p_wake_condition.notify_all();
+
+		for (auto& thread : p_threads)
+		{
+			if (thread.joinable())
+				thread.join();
+		}
+
+		p_threads.clear();
+		p_job_pool.clear();
+		p_num_threads = 0;
+		p_current_label.store(0);
+		p_finish_label.store(0);
 	}
 
 	inline void poll()
@@ -83,21 +115,20 @@ namespace TinyThreadPool
 		std::this_thread::yield();
 	}
 
-	void exec(const Job& job)
+	void Execute(const Job& job)
 	{
-		p_current_label += 1;
-
+		p_current_label.fetch_add(1);
 		while (!p_job_pool.push_back(job)) { poll(); }
 		p_wake_condition.notify_one();
 	}
 
-	bool is_busy()
+	bool Busy()
 	{
-		return p_finish_label.load() < p_current_label;
+		return p_finish_label.load() < p_current_label.load();
 	}
 
-	void wait()
+	void Wait()
 	{
-		while (is_busy()) { poll(); }
+		while (Busy()) { poll(); }
 	}
 }

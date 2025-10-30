@@ -6,8 +6,9 @@ namespace TinyThreadPool
 {
 	using Job = std::function<void()>;
 
-	void	init();
-	void	exec(const Job& job);
-	bool	is_busy();
-	void	wait();
+	void	Initialize();
+	void	Shutdown();
+	void	Execute(const Job& job);
+	bool	Busy();
+	void	Wait();
 }
