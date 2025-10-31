@@ -37,6 +37,12 @@ namespace TinyThreadPool
 			return true;
 		}
 
+		inline bool empty()
+		{
+			std::scoped_lock locker(m_lock);
+			return m_queue.empty();
+		}
+
 	private:
 		std::deque<Job> m_queue;
 		std::mutex		m_lock;
@@ -61,29 +67,32 @@ namespace TinyThreadPool
 		p_finish_label.store(0);
 		p_current_label.store(0);
 
-		auto cores = std::thread::hardware_concurrency();
-		cores = std::max(1u, cores);
+		p_num_threads = std::thread::hardware_concurrency();
+		p_num_threads = std::max(1u, p_num_threads);
 
-		p_threads.reserve(cores);
+		p_threads.reserve(p_num_threads);
 
 		p_alive.store(true);
-		for (uint32_t thread_id = 0; thread_id < cores; ++thread_id)
+		for (uint32_t thread_id = 0; thread_id < p_num_threads; ++thread_id)
 		{
-			p_threads.emplace_back([=] 
-			{
+			p_threads.emplace_back([=]() {
 				Job job;
-				while (p_alive.load())
+				while (true)
 				{
 					if (p_job_pool.pop_front(job))
 					{
 						job();
 						p_finish_label.fetch_add(1);
+						continue;
 					}
-					else
-					{
-						std::unique_lock<std::mutex> lock(p_wake_mutex);
-						p_wake_condition.wait(lock);
-					}
+
+					std::unique_lock<std::mutex> lock(p_wake_mutex);
+					p_wake_condition.wait(lock, []() {
+						return !p_alive.load() || !p_job_pool.empty();
+					});
+
+					if (!p_alive.load() && p_job_pool.empty())
+						break;
 				}
 			});
 		}
@@ -91,8 +100,6 @@ namespace TinyThreadPool
 
 	void Shutdown()
 	{
-		Wait();
-
 		p_alive.store(false);
 		p_wake_condition.notify_all();
 
@@ -111,14 +118,13 @@ namespace TinyThreadPool
 
 	inline void poll()
 	{
-		p_wake_condition.notify_one();
 		std::this_thread::yield();
 	}
 
 	void Execute(const Job& job)
 	{
 		p_current_label.fetch_add(1);
-		while (!p_job_pool.push_back(job)) { poll(); }
+		p_job_pool.push_back(job);
 		p_wake_condition.notify_one();
 	}
 
