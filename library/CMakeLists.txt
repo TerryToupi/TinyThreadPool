@@ -8,7 +8,7 @@ set(LIBRARY_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 file(GLOB_RECURSE LIBRARY_FILES CONFIGURE_DEPENDS "${LIBRARY_PATH}/**.h" "${LIBRARY_PATH}/**.cpp")
 
 add_library(${PROJECT_NAME} STATIC)
-add_library(Library::TinyThreadPool ALIAS ${PROJECT_NAME})
+add_library(TinyThreadPool::Library ALIAS ${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME}
     PRIVATE
