@@ -2,9 +2,11 @@ cmake_minimum_required(VERSION 3.15)
 
 project(TinyThreadPool_Library)
 
-# set the path for conviniance
+include(GNUInstallDirs)
+
+# set the path for convenience
 set(LIBRARY_PATH ${CMAKE_CURRENT_SOURCE_DIR})
-# grab all the files recursivly. No need to add them one by one
+# grab all the files recursively
 file(GLOB_RECURSE LIBRARY_FILES CONFIGURE_DEPENDS "${LIBRARY_PATH}/**.h" "${LIBRARY_PATH}/**.cpp")
 
 add_library(${PROJECT_NAME} STATIC)
@@ -17,7 +19,8 @@ target_sources(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        "${LIBRARY_PATH}/include"
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
 )
 
 target_compile_features(${PROJECT_NAME}
@@ -31,9 +34,6 @@ source_group(
     FILES ${LIBRARY_FILES}
 )
 
-# ============================================================
-# Installation Configuration
-# ============================================================
 # ============================================================
 # Install rules
 # ============================================================
