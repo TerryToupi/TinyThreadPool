@@ -34,48 +34,24 @@ source_group(
 # ============================================================
 # Installation Configuration
 # ============================================================
+# ============================================================
+# Install rules
+# ============================================================
 
-include(GNUInstallDirs)
-include(CMakePackageConfigHelpers)
-
-# Install the library
 install(TARGETS ${PROJECT_NAME}
     EXPORT TinyThreadPoolTargets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-# Install header files
 install(DIRECTORY ${LIBRARY_PATH}/include/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 )
 
-# Install export targets
 install(EXPORT TinyThreadPoolTargets
     FILE TinyThreadPoolTargets.cmake
     NAMESPACE TinyThreadPool::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/TinyThreadPool
-)
-
-# Create and install package config file
-configure_package_config_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/TinyThreadPoolConfig.cmake"
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/TinyThreadPool
-)
-
-# Create and install package version file
-write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/TinyThreadPoolConfigVersion.cmake"
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion
-)
-
-install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/TinyThreadPoolConfig.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/TinyThreadPoolConfigVersion.cmake"
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/TinyThreadPool
 )
